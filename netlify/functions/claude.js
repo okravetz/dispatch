@@ -1,9 +1,16 @@
-// Use ESM export since your package.json is "type": "module"
-export const handler = async (event) => {
-  console.log("Function 'claude' invoked!"); // This will show in your terminal
+exports.handler = async (event) => {
+  console.log("Function 'claude' invoked!");
 
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method not allowed" };
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("Missing ANTHROPIC_API_KEY");
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ error: "API key not configured" }) 
+    };
   }
 
   try {
