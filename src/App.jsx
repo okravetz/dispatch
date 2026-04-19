@@ -89,7 +89,7 @@ const storageLoad = async () => {
 async function callClaude(user, sys) {
   const r = await fetch("/.netlify/functions/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-3.5",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]}),
+    body:JSON.stringify({model:"claude-3-5-sonnet-20241022",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]}),
   });
   const d = await r.json().catch(()=>null);
   if (!r.ok) {
