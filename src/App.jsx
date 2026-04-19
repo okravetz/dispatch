@@ -79,10 +79,10 @@ const INIT = [
 // ── Storage
 const STORE_KEY = "dispatch-tasks-v1";
 const storageSave = async (tasks) => {
-  try { await window.storage?.set(STORE_KEY, JSON.stringify(tasks)); } catch {}
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); } catch {}
 };
 const storageLoad = async () => {
-  try { const r = await window.storage?.get(STORE_KEY); return r?.value ? JSON.parse(r.value) : null; } catch { return null; }
+  try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
 };
 
 // ── API
