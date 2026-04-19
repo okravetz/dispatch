@@ -89,9 +89,13 @@ const storageLoad = async () => {
 async function callClaude(user, sys) {
   const r = await fetch("/.netlify/functions/claude", {
     method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]}),
+    body:JSON.stringify({model:"claude-3.5",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]}),
   });
-  const d = await r.json();
+  const d = await r.json().catch(()=>null);
+  if (!r.ok) {
+    const message = d?.error?.message || d?.message || JSON.stringify(d) || r.statusText;
+    throw new Error(`Claude API error ${r.status}: ${message}`);
+  }
   return d.content?.[0]?.text || "";
 }
 const apiParse = async raw => {
@@ -620,14 +624,21 @@ export default function App() {
   };
   const doGroup = async()=>{
     setLoadGrp(true);
-    const groups=await apiGroup(tasks);
-    if(groups.length){
-      const mp={}; groups.forEach(g=>g.taskIds.forEach(id=>{mp[id]=g.groupName;}));
-      setTasks(ts=>ts.map(t=>mp[t.id]?{...t,aiGroup:mp[t.id]}:t));
-      setAiGroups(groups); setView("ai-groups");
-      showFlash(`✓ Grouped into ${groups.length} contexts`);
+    try {
+      const groups=await apiGroup(tasks);
+      if(groups.length){
+        const mp={}; groups.forEach(g=>g.taskIds.forEach(id=>{mp[id]=g.groupName;}));
+        setTasks(ts=>ts.map(t=>mp[t.id]?{...t,aiGroup:mp[t.id]}:t));
+        setAiGroups(groups); setView("ai-groups");
+        showFlash(`✓ Grouped into ${groups.length} contexts`);
+      } else {
+        showFlash("No groups returned from Claude.");
+      }
+    } catch (err) {
+      showFlash(`AI grouping failed: ${err.message}`);
+    } finally {
+      setLoadGrp(false);
     }
-    setLoadGrp(false);
   };
 
   const renderGroup = groups => (
