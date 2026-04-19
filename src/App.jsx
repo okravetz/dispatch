@@ -10,6 +10,16 @@ if (!document.getElementById("dsp-css")) {
   const s = document.createElement("style"); s.id = "dsp-css";
   s.textContent = `
     *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#070b16;color:#f8fafc;font-size:15px;line-height:1.65;font-family:Inter,system-ui,sans-serif}
+    button,input,textarea,select{font-family:inherit;color:#f8fafc}
+    button{background:#111827;border:1px solid #1f2937;border-radius:8px}
+    button:hover{background:#1f2a44}
+    button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+    *[style*="color:#7986b0"]{color:#cbd5e1 !important}
+    *[style*="color:#6a7b9c"]{color:#94a3b8 !important}
+    *[style*="color:#2d3a58"]{color:#94a3b8 !important}
+    *[style*="color:#4a5880"]{color:#94a3b8 !important}
+    ::selection{background:#4f46e5;color:#ffffff}
     ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#1e2842;border-radius:2px}
     .tc:hover{background:#0d1628 !important}
     .nb:hover{background:#0d1628 !important}
@@ -23,8 +33,8 @@ if (!document.getElementById("dsp-css")) {
     .spn{animation:sp 0.7s linear infinite;display:inline-block}
     @keyframes st{from{transform:translateY(100%)}to{transform:translateY(0)}}
     .st{animation:st 0.22s cubic-bezier(0.22,1,0.36,1)}
-    input,textarea,select{font-family:inherit;background:#070c1c;border:1px solid #1e2842;border-radius:7px;color:#e2e8f4;outline:none;transition:border-color 0.12s}
-    input:focus,textarea:focus,select:focus{border-color:#2a4070 !important}
+    input,textarea,select{font-family:inherit;background:#070c1c;border:1px solid #1e2842;border-radius:7px;color:#f8fafc;outline:none;transition:border-color 0.12s}
+    input:focus,textarea:focus,select:focus{border-color:#3b6bd6 !important}
     select option{background:#0d1628}
     @media(max-width:768px){.sidebar{display:none !important}.dpanel{display:none !important}.mobnav{display:flex !important}.mw{padding-bottom:72px !important}}
     @media(min-width:769px){.mobnav{display:none !important}}
@@ -147,17 +157,17 @@ const Spin = ({s=13}) => <span className="spn" style={{width:s,height:s,borderRa
 const PriDot = ({p}) => <span title={PC[p]?.l} style={{width:8,height:8,borderRadius:"50%",display:"inline-block",flexShrink:0,background:PC[p]?.c||"#6b7280",boxShadow:`0 0 5px ${PC[p]?.c||"#6b7280"}99`}}/>;
 const StatBadge = ({status,onClick,sm}) => {
   const c=SC[status]; return (
-    <button onClick={onClick} aria-label={onClick?`Status: ${c.l}. Click to change`:c.l} style={{fontSize:sm?10:11,fontFamily:"IBM Plex Mono,monospace",color:c.c,background:`${c.g}18`,border:`1px solid ${c.g}40`,borderRadius:4,padding:sm?"1px 5px":"2px 8px",cursor:onClick?"pointer":"default",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:3}}>
+    <button onClick={onClick} aria-label={onClick?`Status: ${c.l}. Click to change`:c.l} style={{fontSize:sm?10:11,fontFamily:"IBM Plex Mono,monospace",color:"#f8fafc",background:`${c.g}33`,border:`1px solid ${c.g}80`,borderRadius:4,padding:sm?"1px 5px":"2px 8px",cursor:onClick?"pointer":"default",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:3}}>
       <span aria-hidden="true">{c.e}</span> {c.l}
     </button>
   );
 };
 const StatMenu = ({task,onUpdate,onClose}) => (
-  <div className="fi" onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#0d1420",border:"1px solid #1e2842",borderRadius:8,padding:4,minWidth:155,boxShadow:"0 8px 24px #00000080"}}>
-    <div style={{fontSize:9,color:"#6a7b9c",fontFamily:"IBM Plex Mono",padding:"2px 8px 5px",textTransform:"uppercase",letterSpacing:"0.08em"}}>Change status</div>
+  <div className="fi" onClick={e=>e.stopPropagation()} style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:"#0b1220",border:"1px solid #1f2a44",borderRadius:8,padding:6,minWidth:170,boxShadow:"0 12px 28px #00000090"}}>
+    <div style={{fontSize:9,color:"#cbd5e1",fontFamily:"IBM Plex Mono",padding:"2px 10px 6px",textTransform:"uppercase",letterSpacing:"0.08em"}}>Change status</div>
     {(TR[task.status]||[]).map(s => { const c=SC[s]; return (
       <button key={s} className="sm-opt" onClick={()=>{onUpdate({status:s});onClose();}}
-        style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"6px 8px",background:"transparent",border:"none",color:c.c,cursor:"pointer",borderRadius:4,fontSize:11,fontFamily:"IBM Plex Mono",textAlign:"left"}}>
+        style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"8px 10px",background:"#111827",border:"1px solid #1f2937",color:"#f8fafc",cursor:"pointer",borderRadius:5,fontSize:12,fontFamily:"IBM Plex Mono",textAlign:"left"}}>
         {c.e} {c.l}
       </button>
     );})}
@@ -175,18 +185,18 @@ const TaskCard = ({task,isSelected,onClick,onUpdate}) => {
     <div className="tc fi" onClick={onClick} style={{display:"flex",gap:10,padding:"11px 13px",background:isSelected?"#0f1c38":overdue?"#1a0808":"#0b1020",border:`1px solid ${isSelected?"#1e3060":overdue?"#3d1010":"#141d35"}`,borderLeft:`3px solid ${overdue?"#ef4444":PC[task.priority]?.c||"#6b7280"}`,borderRadius:8,cursor:"pointer",marginBottom:5,position:"relative",transition:"background 0.1s"}}>
       <div style={{paddingTop:3,flexShrink:0}}><PriDot p={task.priority}/></div>
       <div style={{flex:1,minWidth:0}}>
-        <div style={{fontSize:13,fontWeight:600,color:task.status==="done"?"#3d4d72":"#dce1f4",fontFamily:"Bricolage Grotesque,sans-serif",lineHeight:1.35,marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",textDecoration:task.status==="done"?"line-through":"none"}}>
+        <div style={{fontSize:15,fontWeight:700,color:task.status==="done"?"#7a8ca8":"#f8fafc",fontFamily:"Bricolage Grotesque,sans-serif",lineHeight:1.4,marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"normal",textAlign:"left",textDecoration:task.status==="done"?"line-through":"none"}}>
           {task.title}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-          <span style={{fontSize:11,color:"#7986b0",fontFamily:"IBM Plex Mono",display:"flex",alignItems:"center",gap:3}}>
-            <span style={{fontSize:12}}>{PE[task.source]||"🔔"}</span>{task.contact||task.source}
+          <span style={{fontSize:12,color:"#e2e8f4",fontFamily:"IBM Plex Mono",display:"flex",alignItems:"center",gap:3}}>
+            <span style={{fontSize:13}}>{PE[task.source]||"🔔"}</span>{task.contact||task.source}
           </span>
-          {tSub>0 && <span style={{fontSize:9,color:"#6a7b9c",fontFamily:"IBM Plex Mono"}}>[{dSub}/{tSub}]</span>}
-          {task.dueDate && <span style={{fontSize:9,fontFamily:"IBM Plex Mono",color:overdue?"#ef4444":"#4a5880",background:overdue?"#3d101008":"transparent",borderRadius:3,display:"inline-flex",alignItems:"center",gap:2}}>{overdue?"⚠":"📅"} {fmtDate(task.dueDate)}</span>}
-          {nudge && <span style={{fontSize:9,fontFamily:"IBM Plex Mono",color:"#f59e0b"}}>🔔 nudge due</span>}
-          {aging && !overdue && task.status!=="done" && <span style={{fontSize:9,color:"#7986b0",fontFamily:"IBM Plex Mono",opacity:0.6}}>{age}d old</span>}
-          {task.aiGroup && <span style={{fontSize:9,color:"#6366f170",fontFamily:"IBM Plex Mono",border:"1px solid #6366f125",borderRadius:3,padding:"0 4px"}}>{task.aiGroup}</span>}
+          {tSub>0 && <span style={{fontSize:10,color:"#cbd5e1",fontFamily:"IBM Plex Mono"}}>[{dSub}/{tSub}]</span>}
+          {task.dueDate && <span style={{fontSize:10,fontFamily:"IBM Plex Mono",color:overdue?"#ffb3b3":"#a5c9ff",background:overdue?"#4b1218":"#101e37",borderRadius:4,display:"inline-flex",alignItems:"center",gap:4,padding:"2px 6px"}}>{overdue?"⚠":"📅"} {fmtDate(task.dueDate)}</span>}
+          {nudge && <span style={{fontSize:10,fontFamily:"IBM Plex Mono",color:"#fbbf24",background:"#2e2c0d",borderRadius:4,padding:"2px 6px"}}>🔔 nudge due</span>}
+          {aging && !overdue && task.status!=="done" && <span style={{fontSize:10,color:"#9ca3af",fontFamily:"IBM Plex Mono"}}>{age}d old</span>}
+          {task.aiGroup && <span style={{fontSize:10,color:"#f8fafc",fontFamily:"IBM Plex Mono",border:"1px solid #4f46e5",background:"#1f1b3a",borderRadius:4,padding:"2px 6px"}}>{task.aiGroup}</span>}
         </div>
       </div>
       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
@@ -231,7 +241,7 @@ const TaskDetail = ({task,onUpdate,onClose,isMob}) => {
       <div style={{padding:"15px 17px",borderBottom:"1px solid #141d35",position:"sticky",top:0,background:"#070b16",zIndex:1}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f4",fontFamily:"Bricolage Grotesque",lineHeight:1.35,marginBottom:8}}>{task.title}</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#f8fafc",fontFamily:"Bricolage Grotesque",lineHeight:1.35,marginBottom:8,textAlign:"left"}}>{task.title}</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
               <div style={{position:"relative"}}>
                 <StatBadge status={task.status} onClick={()=>setShowSM(v=>!v)}/>
