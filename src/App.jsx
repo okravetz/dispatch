@@ -144,6 +144,29 @@ Return ONLY valid JSON array (2-12 items): [{"title":"verb-first action under 80
 Priority 1-5 (5=most urgent). Skip vague thoughts that aren't actionable. Each task must have a clear next action.`);
   return pj(t) || [];
 };
+async function callClaudeVision(base64, mediaType, sys) {
+  const r = await fetch("/.netlify/functions/claude", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model:"claude-sonnet-4-6", max_tokens:1000, system:sys,
+      messages:[{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
+        {type:"text",text:"Extract the actionable task from this notification or message screenshot."}
+      ]}]
+    }),
+  });
+  const d = await r.json().catch(()=>null);
+  if(!r.ok){ const msg=d?.error?.message||r.statusText; throw new Error(`Claude API error ${r.status}: ${msg}`); }
+  return d.content?.[0]?.text || "";
+}
+const apiParseImage = async (base64, mediaType) => {
+  const t = await callClaudeVision(base64, mediaType,
+    `You extract tasks from notification or message screenshots. Look at any visible text, sender names, app chrome, and urgency signals.
+Return ONLY valid JSON (no markdown) with these exact fields:
+{"title":"verb-first action title under 80 chars","source":"Slack|Gmail|Teams|WhatsApp|SMS|Phone|Email|Manual|Other","contact":"person or group name visible in image, or empty string","notes":"relevant context, deadline, or key details visible, or empty string","priority":3}
+Priority 1-5 where 5=most urgent. Infer source from app UI if visible (e.g. Slack sidebar = Slack).`);
+  return pj(t) || {title:"Task from image",source:"Manual",contact:"",notes:"",priority:3};
+};
 
 // ── Hooks
 const useIsMobile = () => {
@@ -398,6 +421,31 @@ const AddModal = ({onClose,onAdd}) => {
   const [ff,setFf] = useState({title:"",source:"Manual",contact:"",notes:"",priority:3});
   const [dump,setDump] = useState(""); const [dumping,setDumping] = useState(false);
   const [dumpTasks,setDumpTasks] = useState(null); const [dumpSel,setDumpSel] = useState({});
+  const [imgFile,setImgFile] = useState(null); const [imgPreview,setImgPreview] = useState(null);
+  const [imgParsing,setImgParsing] = useState(false); const [imgParsed,setImgParsed] = useState(null);
+  const [imgDrag,setImgDrag] = useState(false);
+
+  const loadImage = file => {
+    if(!file||!file.type.startsWith("image/")) return;
+    setImgFile(file); setImgParsed(null);
+    const reader = new FileReader();
+    reader.onload = e => setImgPreview(e.target.result);
+    reader.readAsDataURL(file);
+  };
+  const doParseImage = async () => {
+    if(!imgFile) return;
+    setImgParsing(true);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const dataUrl = e.target.result;
+      const base64 = dataUrl.split(",")[1];
+      const mediaType = imgFile.type;
+      try { setImgParsed(await apiParseImage(base64, mediaType)); }
+      catch(err) { console.error(err); }
+      setImgParsing(false);
+    };
+    reader.readAsDataURL(imgFile);
+  };
 
   const doDump = async () => {
     if(!dump.trim()) return;
@@ -419,7 +467,7 @@ const AddModal = ({onClose,onAdd}) => {
 
   const base = {width:"100%",padding:"9px 12px",fontSize:13,fontFamily:"Bricolage Grotesque"};
   const mono = {width:"100%",padding:"8px 10px",fontSize:12,fontFamily:"IBM Plex Mono"};
-  const TABS = [{id:"quick",l:"⚡ Quick"},{id:"parse",l:"🤖 Paste & Parse"},{id:"dump",l:"🧠 Brain Dump"},{id:"full",l:"📝 Full Form"}];
+  const TABS = [{id:"quick",l:"⚡ Quick"},{id:"parse",l:"🤖 Paste & Parse"},{id:"snap",l:"📷 Snap"},{id:"dump",l:"🧠 Brain Dump"},{id:"full",l:"📝 Full Form"}];
 
   return (
     <div onClick={e=>e.target===e.currentTarget&&onClose()} style={{position:"fixed",inset:0,zIndex:500,background:"#00000088",backdropFilter:"blur(4px)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
@@ -471,6 +519,64 @@ const AddModal = ({onClose,onAdd}) => {
                   <div style={{display:"flex",gap:8,marginTop:4}}>
                     <button onClick={()=>setParsed(null)} style={{flex:1,background:"transparent",border:"1px solid #1e2842",borderRadius:8,padding:"8px",color:"#7986b0",cursor:"pointer",fontSize:11,fontFamily:"IBM Plex Mono"}}>← Redo</button>
                     <button onClick={()=>{onAdd(parsed);onClose();}} style={{flex:2,background:"#f59e0b",color:"#000",border:"none",borderRadius:8,padding:"8px",cursor:"pointer",fontSize:13,fontFamily:"Bricolage Grotesque",fontWeight:700}}>Confirm & Add →</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab==="snap" && (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {!imgParsed ? (
+                <>
+                  <div
+                    onDragOver={e=>{e.preventDefault();setImgDrag(true);}}
+                    onDragLeave={()=>setImgDrag(false)}
+                    onDrop={e=>{e.preventDefault();setImgDrag(false);loadImage(e.dataTransfer.files[0]);}}
+                    onClick={()=>document.getElementById("img-upload").click()}
+                    style={{border:`2px dashed ${imgDrag?"#a855f7":"#1e2842"}`,borderRadius:10,padding:"24px 16px",textAlign:"center",cursor:"pointer",background:imgDrag?"#1a0d30":"#070c1c",transition:"all 0.15s",position:"relative"}}>
+                    <input id="img-upload" type="file" accept="image/*" capture="environment"
+                      onChange={e=>loadImage(e.target.files[0])}
+                      style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}
+                      aria-label="Upload notification screenshot"/>
+                    {imgPreview ? (
+                      <img src={imgPreview} alt="Selected notification screenshot"
+                        style={{maxHeight:160,maxWidth:"100%",borderRadius:6,objectFit:"contain",pointerEvents:"none"}}/>
+                    ) : (
+                      <>
+                        <div style={{fontSize:32,marginBottom:8}} aria-hidden="true">📷</div>
+                        <div style={{fontSize:12,fontFamily:"Bricolage Grotesque",fontWeight:600,color:"#c8d0e8",marginBottom:4}}>Drop a screenshot or tap to upload</div>
+                        <div style={{fontSize:10,color:"#6a7b9c",fontFamily:"IBM Plex Mono"}}>Notification, email, Slack thread, SMS — anything with text</div>
+                      </>
+                    )}
+                  </div>
+                  {imgPreview && (
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{setImgFile(null);setImgPreview(null);}} style={{flex:1,background:"transparent",border:"1px solid #1e2842",borderRadius:8,padding:"8px",color:"#7986b0",cursor:"pointer",fontSize:11,fontFamily:"IBM Plex Mono"}}>× Clear</button>
+                      <button onClick={doParseImage} disabled={imgParsing} style={{flex:2,background:imgParsing?"#1a1535":"#a855f7",color:"#fff",border:"none",borderRadius:8,padding:"9px",cursor:"pointer",fontSize:13,fontFamily:"Bricolage Grotesque",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                        {imgParsing?<><Spin/> Reading image…</>:"🤖 Extract Task"}
+                      </button>
+                    </div>
+                  )}
+                  <div style={{fontSize:9,color:"#6a7b9c",fontFamily:"IBM Plex Mono",lineHeight:1.6}}>
+                    On mobile, tap to open your camera and photograph a notification directly
+                  </div>
+                </>
+              ) : (
+                <div className="fi" style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {imgPreview && <img src={imgPreview} alt="Source screenshot" style={{maxHeight:80,maxWidth:"100%",borderRadius:5,objectFit:"contain",opacity:0.6}}/>}
+                  <div style={{fontSize:10,color:"#a855f7",fontFamily:"IBM Plex Mono",marginBottom:2}}>✓ AI extracted — edit if needed:</div>
+                  <input value={imgParsed.title} onChange={e=>setImgParsed(d=>({...d,title:e.target.value}))} style={{...base,fontWeight:600}}/>
+                  <div style={{display:"flex",gap:8}}>
+                    <select value={imgParsed.source} onChange={e=>setImgParsed(d=>({...d,source:e.target.value}))} style={{...mono,width:"auto",flex:1,color:"#7986b0"}}>
+                      {PLATFORMS.map(p=><option key={p}>{p}</option>)}
+                    </select>
+                    <input value={imgParsed.contact||""} onChange={e=>setImgParsed(d=>({...d,contact:e.target.value}))} placeholder="Contact" style={{...mono,width:"auto",flex:1}}/>
+                  </div>
+                  {imgParsed.notes && <div style={{fontSize:11,color:"#7986b0",fontFamily:"IBM Plex Mono",fontStyle:"italic",padding:"4px 0"}}>{imgParsed.notes}</div>}
+                  <div style={{display:"flex",gap:8,marginTop:4}}>
+                    <button onClick={()=>setImgParsed(null)} style={{flex:1,background:"transparent",border:"1px solid #1e2842",borderRadius:8,padding:"8px",color:"#7986b0",cursor:"pointer",fontSize:11,fontFamily:"IBM Plex Mono"}}>← Redo</button>
+                    <button onClick={()=>{onAdd(imgParsed);onClose();}} style={{flex:2,background:"#f59e0b",color:"#000",border:"none",borderRadius:8,padding:"8px",cursor:"pointer",fontSize:13,fontFamily:"Bricolage Grotesque",fontWeight:700}}>Confirm & Add →</button>
                   </div>
                 </div>
               )}
