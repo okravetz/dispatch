@@ -88,10 +88,38 @@ const INIT = [
 
 // ── Storage
 const STORE_KEY = "dispatch-tasks-v1";
+const SB_URL = import.meta.env.VITE_SUPABASE_URL;
+const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const sbHeaders = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
+
 const storageSave = async (tasks) => {
+  // Write to localStorage immediately (instant, works offline)
   try { localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); } catch {}
+  // Then sync to Supabase in background
+  if(!SB_URL||!SB_KEY) return;
+  try {
+    await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks`, {
+      method:"PATCH",
+      headers:{...sbHeaders,"Prefer":"return=minimal"},
+      body:JSON.stringify({data:tasks}),
+    });
+  } catch {}
 };
+
 const storageLoad = async () => {
+  // Try Supabase first (most up to date, cross-device)
+  if(SB_URL && SB_KEY) {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks&select=data`, {headers:sbHeaders});
+      const d = await r.json();
+      if(d?.[0]?.data?.length) {
+        // Update localStorage cache while we're at it
+        localStorage.setItem(STORE_KEY, JSON.stringify(d[0].data));
+        return d[0].data;
+      }
+    } catch {}
+  }
+  // Fall back to localStorage (works offline)
   try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
 };
 
