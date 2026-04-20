@@ -93,17 +93,21 @@ const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const sbHeaders = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
 
 const storageSave = async (tasks) => {
-  // Write to localStorage immediately (instant, works offline)
+    // Write to localStorage immediately (instant, works offline)
   try { localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); } catch {}
-  // Then sync to Supabase in background
+    // Then sync to Supabase in background
   if(!SB_URL||!SB_KEY) return;
   try {
-    await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks`, {
+    const r = await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks`, {
       method:"PATCH",
       headers:{...sbHeaders,"Prefer":"return=minimal"},
       body:JSON.stringify({data:tasks}),
     });
-  } catch {}
+    if(!r.ok) console.error("Supabase save failed:", r.status, await r.text());
+    else console.log("Supabase save OK");
+  } catch(err) {
+    console.error("Supabase save error:", err);
+  }
 };
 
 const storageLoad = async () => {
