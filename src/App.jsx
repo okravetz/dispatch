@@ -586,7 +586,7 @@ const AddModal = ({onClose,onAdd}) => {
                     onDrop={e=>{e.preventDefault();setImgDrag(false);loadImage(e.dataTransfer.files[0]);}}
                     onClick={()=>document.getElementById("img-upload").click()}
                     style={{border:`2px dashed ${imgDrag?"#a855f7":"#1e2842"}`,borderRadius:10,padding:"24px 16px",textAlign:"center",cursor:"pointer",background:imgDrag?"#1a0d30":"#070c1c",transition:"all 0.15s",position:"relative"}}>
-                    <input id="img-upload" type="file" accept="image/*" capture="environment"
+                    <input id="img-upload" type="file" accept="image/*"
                       onChange={e=>loadImage(e.target.files[0])}
                       style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}
                       aria-label="Upload notification screenshot"/>
@@ -610,7 +610,7 @@ const AddModal = ({onClose,onAdd}) => {
                     </div>
                   )}
                   <div style={{fontSize:9,color:"#6a7b9c",fontFamily:"IBM Plex Mono",lineHeight:1.6}}>
-                    On mobile, tap to open your camera and photograph a notification directly
+                    On mobile, tap to open the gallery picker and select a notification screenshot
                   </div>
                 </>
               ) : (
