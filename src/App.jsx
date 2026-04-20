@@ -88,20 +88,19 @@ const INIT = [
 
 // ── Storage
 const STORE_KEY = "dispatch-tasks-v1";
-const SB_URL = import.meta.env.VITE_SUPABASE_URL;
-const SB_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SB_URL = (typeof __SB_URL__ !== "undefined" && __SB_URL__) ? __SB_URL__ : null;
+const SB_KEY = (typeof __SB_KEY__ !== "undefined" && __SB_KEY__) ? __SB_KEY__ : null;
 const sbHeaders = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
 
 const storageSave = async (tasks) => {
-    // Write to localStorage immediately (instant, works offline)
   try { localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); } catch {}
-    // Then sync to Supabase in background
+  try { await window.storage?.set(STORE_KEY, JSON.stringify(tasks)); } catch {}
   if(!SB_URL||!SB_KEY) return;
   try {
-    const r = await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks`, {
-      method:"PATCH",
-      headers:{...sbHeaders,"Prefer":"return=minimal"},
-      body:JSON.stringify({data:tasks}),
+    const r = await fetch(`${SB_URL}/rest/v1/store`, {
+      method:"POST",
+      headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=minimal"},
+      body:JSON.stringify({id:"tasks",data:tasks}),
     });
     if(!r.ok) console.error("Supabase save failed:", r.status, await r.text());
     else console.log("Supabase save OK");
@@ -111,20 +110,20 @@ const storageSave = async (tasks) => {
 };
 
 const storageLoad = async () => {
-  // Try Supabase first (most up to date, cross-device)
   if(SB_URL && SB_KEY) {
     try {
       const r = await fetch(`${SB_URL}/rest/v1/store?id=eq.tasks&select=data`, {headers:sbHeaders});
       const d = await r.json();
-      if(d?.[0]?.data?.length) {
-        // Update localStorage cache while we're at it
+      if(d?.[0]?.data !== undefined) {
         localStorage.setItem(STORE_KEY, JSON.stringify(d[0].data));
         return d[0].data;
       }
-    } catch {}
+    } catch(err) {
+      console.error("Supabase load error:", err);
+    }
   }
-  // Fall back to localStorage (works offline)
-  try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch { return null; }
+  try { const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; } catch {}
+  try { const r = await window.storage?.get(STORE_KEY); return r?.value ? JSON.parse(r.value) : null; } catch { return null; }
 };
 
 // ── API
@@ -714,7 +713,7 @@ const MORE_NAV = [
 // ── Main App
 export default function App() {
   const isMob = useIsMobile();
-  const [tasks,setTasks] = useState(INIT);
+  const [tasks,setTasks] = useState([]);
   const [loaded,setLoaded] = useState(false);
   const [view,setView] = useState("inbox");
   const [selId,setSelId] = useState(null);
@@ -730,7 +729,7 @@ export default function App() {
 
   // Load from storage on mount
   useEffect(()=>{
-    storageLoad().then(saved=>{ if(saved?.length) setTasks(saved); setLoaded(true); });
+    storageLoad().then(saved=>{ setTasks(saved?.length ? saved : []); setLoaded(true); });
   },[]);
 
   // Save to storage when tasks change
@@ -1018,7 +1017,10 @@ export default function App() {
         </div>
 
         <div className="mw" style={{flex:1,overflowY:"auto",padding:"4px 14px 14px"}}>
-          {renderMain()}
+          {!loaded
+            ? <div style={{textAlign:"center",padding:"60px 20px",color:"#6a7b9c",fontFamily:"IBM Plex Mono",fontSize:11}}>Loading…</div>
+            : renderMain()
+          }
         </div>
       </main>
 
