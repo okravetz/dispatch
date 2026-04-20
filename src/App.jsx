@@ -88,9 +88,11 @@ const INIT = [
 
 // ── Storage
 const STORE_KEY = "dispatch-tasks-v1";
-const SB_URL = (typeof __SB_URL__ !== "undefined" && __SB_URL__) ? __SB_URL__ : null;
-const SB_KEY = (typeof __SB_KEY__ !== "undefined" && __SB_KEY__) ? __SB_KEY__ : null;
-const sbHeaders = {"Content-Type":"application/json","apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`};
+// Vite replaces these at build time via vite.config.js define block.
+// In the Claude artifact they evaluate to empty strings → sync disabled.
+const SB_URL = (()=>{ try{ return typeof __SB_URL__!=="undefined"&&__SB_URL__ ? __SB_URL__ : null; }catch{return null;} })();
+const SB_KEY = (()=>{ try{ return typeof __SB_KEY__!=="undefined"&&__SB_KEY__ ? __SB_KEY__ : null; }catch{return null;} })();
+const sbHeaders = {"Content-Type":"application/json","apikey":SB_KEY||"","Authorization":`Bearer ${SB_KEY||""}` };
 
 const storageSave = async (tasks) => {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(tasks)); } catch {}
@@ -271,7 +273,9 @@ const TaskDetail = ({task,onUpdate,onClose,isMob}) => {
   const [editN,setEditN] = useState(false);
   const [nv,setNv] = useState(task.notes||"");
   const [showSM,setShowSM] = useState(false);
-  useEffect(()=>{setNv(task.notes||"");setEditN(false);},[task.id]);
+  const [editTitle,setEditTitle] = useState(false);
+  const [tv,setTv] = useState(task.title||"");
+  useEffect(()=>{setNv(task.notes||"");setEditN(false);setTv(task.title||"");setEditTitle(false);},[task.id]);
 
   const doBreakdown = async()=>{
     setAiL(true);
@@ -295,7 +299,23 @@ const TaskDetail = ({task,onUpdate,onClose,isMob}) => {
       <div style={{padding:"15px 17px",borderBottom:"1px solid #141d35",position:"sticky",top:0,background:"#070b16",zIndex:1}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:16,fontWeight:800,color:"#f8fafc",fontFamily:"Bricolage Grotesque",lineHeight:1.35,marginBottom:8,textAlign:"left"}}>{task.title}</div>
+            {editTitle ? (
+              <div style={{marginBottom:8}}>
+                <textarea value={tv} onChange={e=>setTv(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(tv.trim()){onUpdate({title:tv.trim()});setEditTitle(false);}}if(e.key==="Escape"){setTv(task.title);setEditTitle(false);}}}
+                  rows={2} autoFocus
+                  style={{width:"100%",padding:"7px 10px",fontSize:15,fontWeight:700,fontFamily:"Bricolage Grotesque",resize:"none",lineHeight:1.35,background:"#0d1628",border:"1px solid #2a4070",borderRadius:7,color:"#f8fafc"}}/>
+                <div style={{display:"flex",gap:6,marginTop:5}}>
+                  <button onClick={()=>{if(tv.trim()){onUpdate({title:tv.trim()});setEditTitle(false);}}} style={{background:"#f59e0b",color:"#000",border:"none",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"Bricolage Grotesque"}}>Save</button>
+                  <button onClick={()=>{setTv(task.title);setEditTitle(false);}} style={{background:"transparent",color:"#7986b0",border:"1px solid #1e2842",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:11}}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:8,cursor:"text"}} onClick={()=>setEditTitle(true)} title="Click to rename">
+                <div style={{fontSize:16,fontWeight:800,color:"#f8fafc",fontFamily:"Bricolage Grotesque",lineHeight:1.35,flex:1,textAlign:"left"}}>{task.title}</div>
+                <span style={{fontSize:10,color:"#6a7b9c",fontFamily:"IBM Plex Mono",flexShrink:0,paddingTop:3,opacity:0.7}}>✏</span>
+              </div>
+            )}
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
               <div style={{position:"relative"}}>
                 <StatBadge status={task.status} onClick={()=>setShowSM(v=>!v)}/>
