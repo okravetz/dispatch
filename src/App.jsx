@@ -130,15 +130,12 @@ const storageLoad = async () => {
 
 // ── API
 async function callClaude(user, sys) {
-  const r = await fetch("/.netlify/functions/claude", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]}),
-  });
+  const body = JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:user}]});
+  const headers = {"Content-Type":"application/json"};
+  let r = await fetch("/api/claude", {method:"POST",headers,body});
+  if(!r.ok) r = await fetch("/.netlify/functions/claude", {method:"POST",headers,body});
   const d = await r.json().catch(()=>null);
-  if (!r.ok) {
-    const message = d?.error?.message || d?.message || JSON.stringify(d) || r.statusText;
-    throw new Error(`Claude API error ${r.status}: ${message}`);
-  }
+  if(!r.ok){ const msg=d?.error?.message||r.statusText; throw new Error(`Claude API error ${r.status}: ${msg}`); }
   return d.content?.[0]?.text || "";
 }
 const apiParse = async raw => {
@@ -178,16 +175,10 @@ Priority 1-5 (5=most urgent). Skip vague thoughts that aren't actionable. Each t
   return pj(t) || [];
 };
 async function callClaudeVision(base64, mediaType, sys) {
-  const r = await fetch("/.netlify/functions/claude", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      model:"claude-sonnet-4-6", max_tokens:1000, system:sys,
-      messages:[{role:"user",content:[
-        {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
-        {type:"text",text:"Extract the actionable task from this notification or message screenshot."}
-      ]}]
-    }),
-  });
+  const body = JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,system:sys,messages:[{role:"user",content:[{type:"image",source:{type:"base64",media_type:mediaType,data:base64}},{type:"text",text:"Extract the actionable task from this notification or message screenshot."}]}]});
+  const headers = {"Content-Type":"application/json"};
+  let r = await fetch("/api/claude", {method:"POST",headers,body});
+  if(!r.ok) r = await fetch("/.netlify/functions/claude", {method:"POST",headers,body});
   const d = await r.json().catch(()=>null);
   if(!r.ok){ const msg=d?.error?.message||r.statusText; throw new Error(`Claude API error ${r.status}: ${msg}`); }
   return d.content?.[0]?.text || "";
