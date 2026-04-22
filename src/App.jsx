@@ -43,7 +43,7 @@ if (!document.getElementById("dsp-css")) {
 }
 
 // ── Constants
-const PLATFORMS = ["Slack","Gmail","Teams","WhatsApp","SMS","Phone","Email","In Person","Manual","Other"];
+const PLATFORMS = ["Gmail","Teams","WhatsApp","SMS","Phone","Email","Messenger","Signal","Figma","JIRA","In Person","Manual","Other"];
 
 const SC = {
   inbox:       {l:"Inbox",        e:"📥", c:"#818cf8", g:"#4f46e5"},
@@ -53,7 +53,10 @@ const SC = {
   done:        {l:"Done",         e:"✓",  c:"#4ade80", g:"#16a34a"},
 };
 const PC = {1:{l:"Low",c:"#6b7280"},2:{l:"Normal",c:"#6366f1"},3:{l:"Medium",c:"#eab308"},4:{l:"High",c:"#ef4444"},5:{l:"Urgent",c:"#dc2626"}};
-const PE = {Slack:"💬",Gmail:"📧",Teams:"🔷",WhatsApp:"💚",SMS:"📱",Phone:"📞",Email:"📨",GitHub:"🐙",Manual:"✏️","In Person":"🤝",Other:"🔔"};
+const PE = {Gmail:"📧",Teams:"🔷",WhatsApp:"💚",SMS:"📱",Phone:"📞",Email:"📨",Messenger:"💙",Signal:"🔒",Figma:"🎨",JIRA:"📌",GitHub:"🐙",Manual:"✏️","In Person":"🤝",Other:"🔔"};
+
+const WELLNESS_DOMAINS = ["Physical","Emotional","Intellectual","Social","Spiritual","Occupational","Financial","Environmental"];
+const CONTEXTS = ["Work","Personal","Koleinu","Family","Health","Finance","Side Project","Other"];
 const TR = {
   inbox:       ["in_progress","responded","waiting","done"],
   in_progress: ["responded","waiting","done","inbox"],
@@ -317,7 +320,7 @@ const TaskDetail = ({task,onUpdate,onClose,isMob}) => {
               </span>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close task detail" style={{background:"none",border:"none",color:"#7986b0",fontSize:22,cursor:"pointer",lineHeight:1,flexShrink:0,padding:2}}>×</button>
+          <button onClick={onClose} aria-label="Close task detail" style={{background:"#0d1628",border:"1px solid #1e2842",borderRadius:8,color:"#94a3b8",fontSize:20,cursor:"pointer",lineHeight:1,flexShrink:0,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
       </div>
 
@@ -332,6 +335,26 @@ const TaskDetail = ({task,onUpdate,onClose,isMob}) => {
               <button key={p} onClick={()=>onUpdate({priority:p})} aria-label={`Priority ${p} — ${PC[p].l}`} aria-pressed={task.priority===p} style={{width:27,height:27,borderRadius:"50%",border:"none",background:task.priority===p?PC[p].c:"#0e1628",color:task.priority===p?"#000":PC[p].c,cursor:"pointer",fontSize:11,fontWeight:700,boxShadow:task.priority===p?`0 0 8px ${PC[p].c}70`:"none",transition:"all 0.12s"}}>{p}</button>
             ))}
             <span style={{fontSize:10,color:PC[task.priority]?.c,fontFamily:"IBM Plex Mono",marginLeft:5}}>{PC[task.priority]?.l}</span>
+          </div>
+        </div>
+
+        {/* Context & Domain */}
+        <div style={{display:"flex",gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:"#2d3a58",fontFamily:"IBM Plex Mono",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Context</div>
+            <select value={task.context||""} onChange={e=>onUpdate({context:e.target.value||null})}
+              style={{width:"100%",padding:"6px 9px",fontSize:12,fontFamily:"IBM Plex Mono",colorScheme:"dark"}}>
+              <option value="">— none —</option>
+              {CONTEXTS.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:"#2d3a58",fontFamily:"IBM Plex Mono",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Wellness Domain</div>
+            <select value={task.domain||""} onChange={e=>onUpdate({domain:e.target.value||null})}
+              style={{width:"100%",padding:"6px 9px",fontSize:12,fontFamily:"IBM Plex Mono",colorScheme:"dark"}}>
+              <option value="">— none —</option>
+              {WELLNESS_DOMAINS.map(d=><option key={d} value={d}>{d}</option>)}
+            </select>
           </div>
         </div>
 
@@ -460,7 +483,14 @@ const AddModal = ({onClose,onAdd}) => {
   const [tab,setTab] = useState("quick");
   const [qt,setQt] = useState(""); const [qsrc,setQsrc] = useState("Manual");
   const [pt,setPt] = useState(""); const [parsing,setParsing] = useState(false); const [parsed,setParsed] = useState(null);
-  const [ff,setFf] = useState({title:"",source:"Manual",contact:"",notes:"",priority:3});
+  const [ff,setFf] = useState({title:"",source:"Manual",contact:"",notes:"",priority:3,dueDate:null,context:"",domain:""});
+
+  // Transfer title text when switching between quick and full tabs
+  const switchTab = (newTab) => {
+    if(newTab==="full" && (tab==="quick") && qt.trim()) setFf(f=>({...f,title:qt.trim()}));
+    if(newTab==="quick" && tab==="full" && ff.title.trim()) setQt(ff.title.trim());
+    setTab(newTab);
+  };
   const [dump,setDump] = useState(""); const [dumping,setDumping] = useState(false);
   const [dumpTasks,setDumpTasks] = useState(null); const [dumpSel,setDumpSel] = useState({});
   const [imgFile,setImgFile] = useState(null); const [imgPreview,setImgPreview] = useState(null);
@@ -520,7 +550,7 @@ const AddModal = ({onClose,onAdd}) => {
         </div>
         <div style={{display:"flex",borderBottom:"1px solid #141d35"}}>
           {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"9px 4px",background:"none",border:"none",color:tab===t.id?"#f59e0b":"#4a5880",borderBottom:tab===t.id?"2px solid #f59e0b":"2px solid transparent",cursor:"pointer",fontSize:10,fontFamily:"IBM Plex Mono",transition:"color 0.1s"}}>{t.l}</button>
+            <button key={t.id} onClick={()=>switchTab(t.id)} style={{flex:1,padding:"9px 4px",background:"none",border:"none",color:tab===t.id?"#f59e0b":"#7986b0",borderBottom:tab===t.id?"2px solid #f59e0b":"2px solid transparent",cursor:"pointer",fontSize:10,fontFamily:"IBM Plex Mono",transition:"color 0.1s"}}>{t.l}</button>
           ))}
         </div>
 
@@ -686,6 +716,16 @@ const AddModal = ({onClose,onAdd}) => {
                   <button key={p} onClick={()=>setFf(f=>({...f,priority:p}))} style={{width:27,height:27,borderRadius:"50%",border:"none",background:ff.priority===p?PC[p].c:"#0e1628",color:ff.priority===p?"#000":PC[p].c,cursor:"pointer",fontSize:11,fontWeight:700,boxShadow:ff.priority===p?`0 0 7px ${PC[p].c}70`:"none",transition:"all 0.12s"}}>{p}</button>
                 ))}
               </div>
+              <div style={{display:"flex",gap:8}}>
+                <select value={ff.context||""} onChange={e=>setFf(f=>({...f,context:e.target.value||null}))} style={{...mono,flex:1,color:"#7986b0"}}>
+                  <option value="">Context…</option>
+                  {CONTEXTS.map(c=><option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={ff.domain||""} onChange={e=>setFf(f=>({...f,domain:e.target.value||null}))} style={{...mono,flex:1,color:"#7986b0"}}>
+                  <option value="">Wellness domain…</option>
+                  {WELLNESS_DOMAINS.map(d=><option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
               <button onClick={()=>{if(ff.title.trim()){onAdd(ff);onClose();}}} disabled={!ff.title.trim()} style={{background:"#f59e0b",color:"#000",border:"none",borderRadius:8,padding:"10px",cursor:"pointer",fontSize:13,fontFamily:"Bricolage Grotesque",fontWeight:700,opacity:ff.title.trim()?1:0.35}}>Add Task →</button>
             </div>
           )}
@@ -707,6 +747,8 @@ const NAV = [
   null,
   {id:"by-platform",l:"By Platform",e:"🔷"},
   {id:"by-person",l:"By Person",e:"👤"},
+  {id:"by-context",l:"By Context",e:"🏷"},
+  {id:"by-domain",l:"By Wellness Domain",e:"🌿"},
   {id:"ai-groups",l:"AI Groups",e:"🤖"},
   null,
   {id:"calendar",l:"Calendar",e:"📅"},
@@ -717,6 +759,8 @@ const MORE_NAV = [
   {id:"responded",e:"↩",l:"Responded"},
   {id:"by-platform",e:"🔷",l:"By Platform"},
   {id:"by-person",e:"👤",l:"By Person"},
+  {id:"by-context",e:"🏷",l:"By Context"},
+  {id:"by-domain",e:"🌿",l:"By Domain"},
   {id:"ai-groups",e:"🤖",l:"AI Groups"},
   {id:"calendar",e:"📅",l:"Calendar"},
 ];
@@ -771,6 +815,8 @@ export default function App() {
 
   const byPlatform = useMemo(()=>{ const g={}; tasks.filter(t=>t.status!=="done").forEach(t=>{const k=t.source||"Other";(g[k]=g[k]||[]).push(t);}); return g; },[tasks]);
   const byPerson   = useMemo(()=>{ const g={}; tasks.filter(t=>t.status!=="done").forEach(t=>{const k=t.contact||"(no contact)";(g[k]=g[k]||[]).push(t);}); return g; },[tasks]);
+  const byContext  = useMemo(()=>{ const g={}; tasks.filter(t=>t.status!=="done").forEach(t=>{const k=t.context||"(no context)";(g[k]=g[k]||[]).push(t);}); return g; },[tasks]);
+  const byDomain   = useMemo(()=>{ const g={}; tasks.filter(t=>t.status!=="done").forEach(t=>{const k=t.domain||"(no domain)";(g[k]=g[k]||[]).push(t);}); return g; },[tasks]);
 
   const showFlash = m=>{ setFlash(m); setTimeout(()=>setFlash(""),3500); };
 
@@ -954,6 +1000,8 @@ export default function App() {
     if(view==="calendar") return renderCalendar();
     if(view==="by-platform") return renderGroup(byPlatform);
     if(view==="by-person") return renderGroup(byPerson);
+    if(view==="by-context") return renderGroup(byContext);
+    if(view==="by-domain") return renderGroup(byDomain);
     if(view==="ai-groups") return renderAI();
     if(vTasks.length===0) return (
       <div style={{textAlign:"center",padding:"60px 20px"}}>
